@@ -65,6 +65,24 @@ class database(metaclass=Singleton):
 
 
 
+def consultaTodosPlanos( INEP ):
+
+	myDatabase = database()
+	engine = myDatabase.getEngine()
+
+	with engine.connect() as connection:
+
+		query = "SELECT CEPs.co_entidade, Planos.* \
+				 FROM `mega-edu-scraping-melhorplano`.Planos \
+				 INNER JOIN `mega-edu-scraping-melhorplano`.CEPs \
+				 	ON Planos.CEP = CEPs.co_cep \
+				 	AND CEPs.co_entidade = {CodigoINEP}".format( CodigoINEP = INEP)
+	
+		return pd.read_sql(query, con=engine)
+
+
+
+
 
 def consultaPlanos100kbps( INEP ):
 
@@ -194,6 +212,14 @@ if __name__ == "__main__":
 							dfResult = consultaPlanos100kbps( INEP )
 					else:
 						st.error('🚨 Informe o INEP')
+
+			elif consulta == consultas[1]:
+				INEP = st.text_input('Informe o INEP')
+
+				if st.button('Buscar'):
+
+					if INEP != "":
+						dfResult = consultaTodosPlanos( INEP )
 
 
 		if dfResult is not None:
