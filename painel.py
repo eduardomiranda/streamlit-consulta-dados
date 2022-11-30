@@ -91,30 +91,68 @@ def consultaPlanos100kbps( INEP ):
 
 
 
+def check_password():
+    """Returns `True` if the user had the correct password."""
+
+	# Páginas importantes acessadas durante o desenvolvimento desta função.
+	# 
+	# Authentication without SSO
+	# https://docs.streamlit.io/knowledge-base/deploy/authentication-without-sso
+
+    def password_entered():
+        """Checks whether a password entered by the user is correct."""
+        if st.session_state["password"] == st.secrets["password"]:
+            st.session_state["password_correct"] = True
+            del st.session_state["password"]  # don't store password
+        else:
+            st.session_state["password_correct"] = False
+
+    if "password_correct" not in st.session_state:
+        # First run, show input for password.
+        st.text_input(
+            "Password", type="password", on_change=password_entered, key="password"
+        )
+        return False
+    elif not st.session_state["password_correct"]:
+        # Password not correct, show input + error.
+        st.text_input(
+            "Password", type="password", on_change=password_entered, key="password"
+        )
+        st.error("😕 Password incorrect")
+        return False
+    else:
+        # Password correct.
+        return True
+
+
+
+
 if __name__ == "__main__":
 
 
-	dfResult = None
+	if check_password():
 
-	with st.sidebar:
+		dfResult = None
 
-		st.title("Filtros")
+		with st.sidebar:
 
-		consultas = ('Planos sugeridos', 'Todos os planos')
+			st.title("Filtros")
 
-		consulta = st.selectbox('Qual consulta deseja realizar?', consultas)
+			consultas = ('Planos sugeridos', 'Todos os planos')
 
-		if consulta == consultas[0]:
+			consulta = st.selectbox('Qual consulta deseja realizar?', consultas)
 
-			add_radio = st.radio("Escolha o valor de referência para velocidade.", ("1 Mbps", "100 kbps") )
-			INEP = st.text_input('Informe o INEP')
+			if consulta == consultas[0]:
 
-			if st.button('Buscar'):
+				add_radio = st.radio("Escolha o valor de referência para velocidade.", ("1 Mbps", "100 kbps") )
+				INEP = st.text_input('Informe o INEP')
 
-				if INEP != "":
-					dfResult = consultaPlanos100kbps( INEP )
-				else:
-					st.error('Informe o INEP')
+				if st.button('Buscar'):
+
+					if INEP != "":
+						dfResult = consultaPlanos100kbps( INEP )
+					else:
+						st.error('🚨 Informe o INEP')
 
 
-	st.dataframe(dfResult)
+		st.dataframe(dfResult)
