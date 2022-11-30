@@ -91,6 +91,42 @@ def consultaPlanos100kbps( INEP ):
 
 
 
+def consultaPlanos1Mbps( INEP ):
+
+	myDatabase = database()
+	engine = myDatabase.getEngine()
+
+	with engine.connect() as connection:
+
+		query = "SELECT PlanosMaisBaratosPorCep.INEP, planos.CEP, PlanosMaisBaratosPorCep.custoTotalInstalacao, PlanosMaisBaratosPorCep.dataInfoPrimaryInMega AS Velocidade, planos.dataPriceUnit AS CustoMensal, planos.nomeCompletoPlano, planos.primeiraParteNomePlano, PlanosMaisBaratosPorCep.Escola \
+			     FROM `mega-edu-scraping-melhorplano`.Planos AS planos \
+			     JOIN \
+			     ( \
+			     	SELECT EscolasEMaiorTurno01112022.INEP, viewCustoTotalInstalacao.CEP, EscolasEMaiorTurno01112022.Escola , viewCustoTotalInstalacao.custoTotalInstalacao,  viewCustoTotalInstalacao.dataInfoPrimaryInMega , viewCustoTotalInstalacao.primeiraParteNomePlano, MIN(viewCustoTotalInstalacao.dataPriceUnit) AS MenorValor \
+			     	FROM       `mega-edu-scraping-melhorplano`.EscolasEMaiorTurno01112022 \
+			     	INNER JOIN `mega-edu-scraping-melhorplano`.CoordenadoresArticuladores10112022 \
+			     	INNER JOIN `mega-edu-scraping-melhorplano`.CEPs \
+			     	INNER JOIN `mega-edu-scraping-melhorplano`.viewCustoTotalInstalacao \
+			     		ON  viewCustoTotalInstalacao.CEP = CEPs.co_cep \
+			     		AND CEPs.co_entidade = EscolasEMaiorTurno01112022.INEP \
+			     		AND CoordenadoresArticuladores10112022.CodigoINEP = EscolasEMaiorTurno01112022.INEP \
+			     	WHERE EscolasEMaiorTurno01112022.MatriculasNoMaiorTurno * 0.1 <= viewCustoTotalInstalacao.dataInfoPrimaryInMega \
+			     		AND viewCustoTotalInstalacao.custoTotalPrimeiroAno <= CoordenadoresArticuladores10112022.Custeio \
+			     		AND EscolasEMaiorTurno01112022.INEP = {CodigoINEP} \
+			     	GROUP BY viewCustoTotalInstalacao.CEP, viewCustoTotalInstalacao.primeiraParteNomePlano \
+			     ) PlanosMaisBaratosPorCep \
+			     	ON PlanosMaisBaratosPorCep.CEP = planos.CEP \
+			     	AND PlanosMaisBaratosPorCep.primeiraParteNomePlano = planos.primeiraParteNomePlano \
+			     	AND PlanosMaisBaratosPorCep.MenorValor = planos.dataPriceUnit \
+			     ORDER BY Velocidade DESC, MenorValor".format( CodigoINEP = INEP)
+	
+		return pd.read_sql(query, con=engine)
+
+
+
+
+
+
 def check_password():
     """Returns `True` if the user had the correct password."""
 
@@ -144,15 +180,22 @@ if __name__ == "__main__":
 
 			if consulta == consultas[0]:
 
-				add_radio = st.radio("Escolha o valor de referência para velocidade.", ("1 Mbps", "100 kbps") )
+				velocidades = ("1 Mbps", "100 kbps")
+
+				velocidade = st.radio("Escolha o valor de referência para velocidade.", velocidades )
 				INEP = st.text_input('Informe o INEP')
 
 				if st.button('Buscar'):
 
 					if INEP != "":
-						dfResult = consultaPlanos100kbps( INEP )
+						if velocidade == velocidades[0]:
+							dfResult = consultaPlanos1Mbps( INEP )
+						elif velocidade == velocidades[1]:
+							dfResult = consultaPlanos100kbps( INEP )
 					else:
 						st.error('🚨 Informe o INEP')
 
 
-		st.dataframe(dfResult)
+		if dfResult is not None:
+			st.title("Resultados")
+			st.dataframe(dfResult)
